@@ -59,7 +59,26 @@ class MapHandler(object):
     def __init__(self):
         self._map = self.active_map
 
-class PlayerHandler(MapHandler):
+class PlayerHandler(object):
+    _handlers = []
+
+    @classmethod
+    def set_handlers(self, handlers):
+        self._handlers = handlers
+
+    @classmethod
+    def update(self, controllers, keyboard):
+        for handler, controller in zip(self._handlers, controllers):
+            handler.handle(controller, keyboard)
+
+    @classmethod
+    def change_handle(self, old_handle, new_handle):
+        for i, handle in enumerate(self._handlers):
+            if handle != old_handle: continue
+            self._handlers[i] = new_handle
+            break
+
+class WalkMode(PlayerHandler, MapHandler):
     def __init__(self, actor):
         MapHandler.__init__(self)
         self._actor = actor
@@ -76,19 +95,23 @@ class PlayerHandler(MapHandler):
         if 'down' in down_keys: self._walk(Direction.DOWN)
         if 'up' in down_keys: self._walk(Direction.UP)
         if 'right' in down_keys: self._walk(Direction.RIGHT)
-        if 'start' in down_keys: self.initialize()
         if not keyboard: return
         down_keys =  keyboard.pressed_keys()
-        if ord('h') in down_keys: self._walk(Direction.LEFT)
-        if ord('j') in down_keys: self._walk(Direction.DOWN)
-        if ord('k') in down_keys: self._walk(Direction.UP)
-        if ord('l') in down_keys: self._walk(Direction.RIGHT)
         if ord('q') in down_keys: sys.exit()
 
     def _walk(self, direction):
         pos = self._map.to_coordinate(self._actor, direction)
         if self._map.actor(pos): return
         self._map.move_actor(self._actor, direction)
+
+class ReadyMode(PlayerHandler):
+    def __init__(self, actor):
+        self._actor = actor
+
+    def handle(self, controller, keyboard=None):
+        down_keys =  controller.pressed_keys()
+        if 'start' not in down_keys: return
+        self.change_handle(self, WalkMode(self._actor).initialize())
 
 class WalkDemo(Game, MapHandler):
     POSITION = Coordinate(0, 0)
@@ -103,13 +126,12 @@ class WalkDemo(Game, MapHandler):
 
     def initialize(self):
         tile_sheet = AsciiTileSheet().initialize('Courier New', 18)
-        for color in self.PLAYER_COLOR:
-            actor = Actor(tile_sheet.get_tile('@', color))
-            self._handlers.append(PlayerHandler(actor).initialize())
+        actors = [Actor(tile_sheet.get_tile('@', color)) for color in self.PLAYER_COLOR]
+        handlers = [ReadyMode(actor) for actor in actors]
+        PlayerHandler.set_handlers(handlers)
 
     def update(self):
-        for handler, controller in zip(self._handlers, self._controllers):
-            handler.handle(controller, self._keyboard)
+        PlayerHandler.update(self._controllers, self._keyboard)
 
     def set_screen(self, screen):
         self._screen = screen
