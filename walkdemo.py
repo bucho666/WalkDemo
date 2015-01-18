@@ -79,15 +79,51 @@ class PlayerHandler(object):
             self._handlers[i] = new_handle
             break
 
-class WalkCommand(MapHandler):
+class Activable(object):
+    def __init__(self, state=True):
+        self._is_active = state
+
+    def is_active(self):
+        return self._is_active
+
+    def is_inactive(self):
+        return not self.is_active()
+
+    def active(self):
+        self._is_active = True
+
+    def inactive(self):
+        self._is_active = False
+
+class WillActive(Job):
+    def __init__(self, time, target):
+        Job.__init__(self, time)
+        self._target = target
+
+    def job(self):
+        self._target.active()
+
+class WalkCommand(MapHandler, Activable):
     def __init__(self, actor):
+        Activable.__init__(self)
         MapHandler.__init__(self)
         self._actor = actor
+        self._run = False
+
+    def set_run_mode(self, mode):
+        self._run = mode
 
     def execute(self, direction):
+        if self.is_inactive(): return
         pos = self._map.to_coordinate(self._actor, direction)
         if self._map.actor(pos): return
         self._map.move_actor(self._actor, direction)
+        if not self._run:
+            self._wait()
+
+    def _wait(self):
+        self.inactive()
+        WillActive(0.1, self)
 
 class WalkMode(PlayerHandler, MapHandler):
     def __init__(self, actor):
@@ -103,6 +139,11 @@ class WalkMode(PlayerHandler, MapHandler):
 
     def handle(self, controller, keyboard=None):
         down_keys =  controller.pressed_keys()
+        self._walk.set_run_mode('run' in down_keys)
+        if set(['up', 'left']) <= down_keys: self._walk.execute(Direction.UPPER_LEFT)
+        if set(['up', 'right']) <= down_keys: self._walk.execute(Direction.UPPER_RIGHT)
+        if set(['down', 'left']) <= down_keys: self._walk.execute(Direction.LOWER_LEFT)
+        if set(['down', 'right']) <= down_keys: self._walk.execute(Direction.LOWER_RIGHT)
         if 'left' in down_keys: self._walk.execute(Direction.LEFT)
         if 'down' in down_keys: self._walk.execute(Direction.DOWN)
         if 'up' in down_keys: self._walk.execute(Direction.UP)
@@ -157,6 +198,6 @@ if __name__ == '__main__':
         .initialize_screen(640, 480, 16)\
         .initialize_controller(CONTROLLER_NUM, 'config.ini')\
         .set_font('Courier New', 18)\
-        .set_fps(24)\
+        .set_fps(30)\
         .set_caption('WalkDemo')
     runner.run()
