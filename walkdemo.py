@@ -48,8 +48,9 @@ class ActorMap(object):
         self.put(c+direction, self.pickup(c))
 
 class Actor(object):
-    SPEED_UNIT = 0.02
-    WAIT_TIME_MAX = 1.5
+    SPEED_UNIT = 0.01
+    WAIT_TIME_MAX = 1.0
+    WAIT_TIME_MIN = 0.05
     def __init__(self, graphic):
         self._graphic = graphic
         self._walk_wait_time = 0.1
@@ -65,7 +66,7 @@ class Actor(object):
             self._walk_wait_time += self.SPEED_UNIT
 
     def speed_up(self):
-        if self._walk_wait_time > 0:
+        if self._walk_wait_time > self.WAIT_TIME_MIN:
             self._walk_wait_time -= self.SPEED_UNIT
 
 class MapHandler(object):
