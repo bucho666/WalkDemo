@@ -6,6 +6,7 @@ from pygameframework import Color
 from pygameframework import AsciiTileSheet
 from pygameframework import Coordinate
 from pygameframework import Direction
+from pygameframework import Job
 import sys
 
 class ActorMap(object):
@@ -78,10 +79,21 @@ class PlayerHandler(object):
             self._handlers[i] = new_handle
             break
 
+class WalkCommand(MapHandler):
+    def __init__(self, actor):
+        MapHandler.__init__(self)
+        self._actor = actor
+
+    def execute(self, direction):
+        pos = self._map.to_coordinate(self._actor, direction)
+        if self._map.actor(pos): return
+        self._map.move_actor(self._actor, direction)
+
 class WalkMode(PlayerHandler, MapHandler):
     def __init__(self, actor):
         MapHandler.__init__(self)
         self._actor = actor
+        self._walk = WalkCommand(actor)
 
     def initialize(self):
         x = 1
@@ -91,18 +103,13 @@ class WalkMode(PlayerHandler, MapHandler):
 
     def handle(self, controller, keyboard=None):
         down_keys =  controller.pressed_keys()
-        if 'left' in down_keys: self._walk(Direction.LEFT)
-        if 'down' in down_keys: self._walk(Direction.DOWN)
-        if 'up' in down_keys: self._walk(Direction.UP)
-        if 'right' in down_keys: self._walk(Direction.RIGHT)
+        if 'left' in down_keys: self._walk.execute(Direction.LEFT)
+        if 'down' in down_keys: self._walk.execute(Direction.DOWN)
+        if 'up' in down_keys: self._walk.execute(Direction.UP)
+        if 'right' in down_keys: self._walk.execute(Direction.RIGHT)
         if not keyboard: return
         down_keys =  keyboard.pressed_keys()
         if ord('q') in down_keys: sys.exit()
-
-    def _walk(self, direction):
-        pos = self._map.to_coordinate(self._actor, direction)
-        if self._map.actor(pos): return
-        self._map.move_actor(self._actor, direction)
 
 class ReadyMode(PlayerHandler):
     def __init__(self, actor):
