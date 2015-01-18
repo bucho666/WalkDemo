@@ -48,11 +48,25 @@ class ActorMap(object):
         self.put(c+direction, self.pickup(c))
 
 class Actor(object):
+    SPEED_UNIT = 0.02
+    WAIT_TIME_MAX = 1.5
     def __init__(self, graphic):
         self._graphic = graphic
+        self._walk_wait_time = 0.1
 
     def render(self, position, screen):
         screen.draw(position, self._graphic)
+
+    def walk_wait_time(self):
+        return self._walk_wait_time
+
+    def speed_down(self):
+        if self._walk_wait_time < self.WAIT_TIME_MAX:
+            self._walk_wait_time += self.SPEED_UNIT
+
+    def speed_up(self):
+        if self._walk_wait_time > 0:
+            self._walk_wait_time -= self.SPEED_UNIT
 
 class MapHandler(object):
     active_map = ActorMap(80, 20)
@@ -123,7 +137,7 @@ class WalkCommand(MapHandler, Activable):
 
     def _wait(self):
         self.inactive()
-        WillActive(0.1, self)
+        WillActive(self._actor.walk_wait_time(), self)
 
 class WalkMode(PlayerHandler, MapHandler):
     def __init__(self, actor):
@@ -148,6 +162,8 @@ class WalkMode(PlayerHandler, MapHandler):
         if 'down' in down_keys: self._walk.execute(Direction.DOWN)
         if 'up' in down_keys: self._walk.execute(Direction.UP)
         if 'right' in down_keys: self._walk.execute(Direction.RIGHT)
+        if 'speed_up' in down_keys:self._actor.speed_up()
+        if 'speed_down' in down_keys: self._actor.speed_down()
         if not keyboard: return
         down_keys =  keyboard.pressed_keys()
         if ord('q') in down_keys: sys.exit()
